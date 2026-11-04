@@ -1,0 +1,510 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bruce 1.16.1 bruce fix - Web Flasher</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#0a0d14',
+                            card: '#121824',
+                            border: '#1f293d',
+                            primary: '#00f0ff',
+                            secondary: '#7000ff',
+                            accent: '#ff0055',
+                            success: '#00ff88',
+                            warning: '#ffb700',
+                            text: '#e2e8f0'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'monospace'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ESPTool JS Bundle from unpkg CDN -->
+    <script type="module">
+        import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.4.3/bundle.js";
+        window.ESPLoader = ESPLoader;
+        window.Transport = Transport;
+    </script>
+    <style>
+        /* Custom scrollbar for terminal */
+        #terminal::-webkit-scrollbar {
+            width: 8px;
+        }
+        #terminal::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        #terminal::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        #terminal::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .glow-effect {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+        }
+        .glow-effect:hover {
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
+        }
+        .glow-red:hover {
+            box-shadow: 0 0 25px rgba(255, 0, 85, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-cyber-bg text-cyber-text font-sans min-h-screen flex flex-col justify-between selection:bg-cyber-primary selection:text-black">
+
+    <!-- Header Section -->
+    <header class="border-b border-cyber-border bg-cyber-card/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-cyber-primary/10 border border-cyber-primary/30 rounded-xl text-cyber-primary">
+                    <i class="fa-solid font-mono fa-microchip text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold tracking-wide text-white uppercase flex items-center gap-2">
+                        bruce 1.16.1 <span class="text-xs px-2 py-0.5 rounded bg-cyber-accent/20 border border-cyber-accent text-cyber-accent font-semibold">bruce fix</span>
+                    </h1>
+                    <p class="text-xs text-gray-400">Web Serial ESP32 Firmware Flasher</p>
+                </div>
+            </div>
+
+            <!-- GitHub Source Link & Connection Status Badge -->
+            <div class="flex items-center gap-3">
+                <a href="https://github.com/lolzik-2/firmware" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyber-primary/40 bg-cyber-primary/10 hover:bg-cyber-primary/20 text-xs font-semibold text-cyber-primary transition-all glow-effect">
+                    <i class="fa-brands fa-github text-base"></i>
+                    <span>Source Code</span>
+                </a>
+                <div id="statusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-700 bg-gray-900/50 text-xs font-medium text-gray-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-gray-500 animate-pulse" id="statusDot"></span>
+                    <span id="statusText">Disconnected</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto px-4 py-8 w-full flex-1 flex flex-col gap-8">
+
+        <!-- Browser Compatibility Warning -->
+        <div id="browserWarning" class="hidden bg-cyber-accent/10 border border-cyber-accent/40 rounded-xl p-4 text-cyber-accent text-sm flex items-center gap-3">
+            <i class="fa-solid fa-triangle-exclamation text-xl shrink-0"></i>
+            <div>
+                <strong>Web Serial API not supported!</strong> Please open this site in Google Chrome, Microsoft Edge, or Opera on a Desktop or Android device with WebSerial support.
+            </div>
+        </div>
+
+        <!-- Connection Settings Grid -->
+        <section class="bg-cyber-card border border-cyber-border rounded-2xl p-5 md:p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-4 border-b border-cyber-border pb-3">
+                <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-plug text-cyber-primary"></i> 1. Serial Port Connection
+                </h2>
+                <span class="text-xs text-gray-400">Select baud rate & connect device</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Baud Rate</label>
+                    <select id="baudRate" class="w-full bg-cyber-bg border border-cyber-border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyber-primary transition-colors">
+                        <option value="115200">115200 (Standard / Safe)</option>
+                        <option value="460800">460800 (Fast)</option>
+                        <option value="921600" selected>921600 (Ultra High Speed)</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-2 flex gap-3">
+                    <button id="connectBtn" onclick="toggleConnect()" class="flex-1 bg-cyber-primary/10 border border-cyber-primary text-cyber-primary hover:bg-cyber-primary hover:text-black font-semibold py-2.5 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm glow-effect">
+                        <i class="fa-solid fa-link"></i> Connect Device
+                    </button>
+                    <button id="disconnectBtn" onclick="disconnectPort()" disabled class="hidden bg-gray-800 border border-gray-700 text-gray-400 hover:text-white py-2.5 px-4 rounded-xl transition-all duration-200 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-link-slash"></i> Disconnect
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Device Selection & Flashing Actions -->
+        <section class="bg-cyber-card border border-cyber-border rounded-2xl p-5 md:p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-4 border-b border-cyber-border pb-3">
+                <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-cyber-primary"></i> 2. Choose Device & Action
+                </h2>
+                <span class="text-xs text-gray-400">Flash targeted target firmware</span>
+            </div>
+
+            <!-- Device Action Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <!-- Cardputer ADV -->
+                <div class="bg-cyber-bg border border-cyber-border rounded-xl p-4 flex flex-col justify-between hover:border-cyber-primary/50 transition-all group">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">M5Stack</span>
+                            <i class="fa-solid fa-keyboard text-gray-500 group-hover:text-cyber-primary transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-white mb-1">Cardputer ADV</h3>
+                        <p class="text-xs text-gray-400 mb-3 font-mono">Bruce-m5stack-cardputer.bin</p>
+                    </div>
+                    <button onclick="flashFirmware('cardputer')" class="w-full bg-cyber-primary/10 hover:bg-cyber-primary hover:text-black border border-cyber-primary/50 text-cyber-primary text-sm font-semibold py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download"></i> Flash Cardputer
+                    </button>
+                </div>
+
+                <!-- M5Stick S3 -->
+                <div class="bg-cyber-bg border border-cyber-border rounded-xl p-4 flex flex-col justify-between hover:border-cyber-primary/50 transition-all group">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">ESP32-S3</span>
+                            <i class="fa-solid fa-pager text-gray-500 group-hover:text-cyber-primary transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-white mb-1">M5Stick S3</h3>
+                        <p class="text-xs text-gray-400 mb-3 font-mono">Bruce-m5stack-sticks3.bin</p>
+                    </div>
+                    <button onclick="flashFirmware('sticks3')" class="w-full bg-cyber-primary/10 hover:bg-cyber-primary hover:text-black border border-cyber-primary/50 text-cyber-primary text-sm font-semibold py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download"></i> Flash M5Stick S3
+                    </button>
+                </div>
+
+                <!-- M5Stick Plus 2 -->
+                <div class="bg-cyber-bg border border-cyber-border rounded-xl p-4 flex flex-col justify-between hover:border-cyber-primary/50 transition-all group">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">M5Stick C Plus 2</span>
+                            <i class="fa-solid fa-mobile-screen-button text-gray-500 group-hover:text-cyber-primary transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-white mb-1">M5Stick Plus 2</h3>
+                        <p class="text-xs text-gray-400 mb-3 font-mono">Bruce-m5stack-cplus2.bin</p>
+                    </div>
+                    <button onclick="flashFirmware('cplus2')" class="w-full bg-cyber-primary/10 hover:bg-cyber-primary hover:text-black border border-cyber-primary/50 text-cyber-primary text-sm font-semibold py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download"></i> Flash Plus 2
+                    </button>
+                </div>
+            </div>
+
+            <!-- Erase Section -->
+            <div class="border-t border-cyber-border pt-4 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h4 class="text-sm font-semibold text-white">Full Chip Erase</h4>
+                    <p class="text-xs text-gray-400">Clears all previous flash memory and flash configurations.</p>
+                </div>
+                <button onclick="eraseFlash()" class="bg-cyber-accent/10 border border-cyber-accent/50 text-cyber-accent hover:bg-cyber-accent hover:text-white text-sm font-semibold py-2 px-5 rounded-xl transition-all duration-200 flex items-center gap-2 glow-red">
+                    <i class="fa-solid fa-trash-can"></i> Erase Flash
+                </button>
+            </div>
+        </section>
+
+        <!-- Flash Progress & Terminal -->
+        <section class="bg-cyber-card border border-cyber-border rounded-2xl p-5 md:p-6 shadow-xl flex flex-col gap-4">
+            <div class="flex items-center justify-between border-b border-cyber-border pb-3">
+                <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-cyber-primary"></i> Progress & Console Terminal
+                </h2>
+                <button onclick="clearLogs()" class="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors">
+                    <i class="fa-solid fa-eraser"></i> Clear Logs
+                </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div>
+                <div class="flex justify-between text-xs text-gray-400 mb-1">
+                    <span id="progressStatus">Ready</span>
+                    <span id="progressPercent" class="font-mono text-cyber-primary font-bold">0%</span>
+                </div>
+                <div class="w-full h-3 bg-cyber-bg rounded-full border border-cyber-border overflow-hidden p-0.5">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-cyber-secondary via-cyber-primary to-cyber-success rounded-full w-0 transition-all duration-200"></div>
+                </div>
+            </div>
+
+            <!-- Terminal Window -->
+            <div id="terminal" class="bg-cyber-bg border border-cyber-border rounded-xl p-4 font-mono text-xs text-gray-300 h-64 overflow-y-auto space-y-1 selection:bg-cyber-primary selection:text-black">
+                <div class="text-gray-500">// Bruce Web Flasher Console Initialized...</div>
+                <div class="text-gray-500">// Connect your device and click "Flash" or "Erase Flash".</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-cyber-border bg-cyber-card/60 py-6 text-center mt-auto">
+        <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-gray-400">
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-white">bruce 1.16.1 bruce fix</span> &copy; 2026
+                <span class="text-gray-600">|</span>
+                <a href="https://github.com/lolzik-2/firmware" target="_blank" rel="noopener noreferrer" class="text-xs text-cyber-primary hover:underline inline-flex items-center gap-1">
+                    <i class="fa-brands fa-github"></i> github.com/lolzik-2/firmware
+                </a>
+            </div>
+            <div class="flex items-center gap-2 bg-cyber-bg border border-cyber-border px-3 py-1.5 rounded-full text-xs font-mono text-cyber-primary">
+                <i class="fa-brands fa-tiktok text-cyber-accent text-sm"></i>
+                <span>tiktok: <strong class="text-white">lol_video333</strong></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Firmware Logic -->
+    <script>
+        // Check for Web Serial Support
+        if (!("serial" in navigator)) {
+            document.getElementById('browserWarning').classList.remove('hidden');
+        }
+
+        // Mapping files to devices
+        const FIRMWARE_MAP = {
+            cardputer: {
+                name: 'Cardputer ADV',
+                file: 'Bruce-m5stack-cardputer.bin'
+            },
+            sticks3: {
+                name: 'M5Stick S3',
+                file: 'Bruce-m5stack-sticks3.bin'
+            },
+            cplus2: {
+                name: 'M5Stick Plus 2',
+                file: 'Bruce-m5stack-cplus2.bin'
+            }
+        };
+
+        let device = null;
+        let transport = null;
+        let isConnected = false;
+
+        // Terminal Log helper
+        function logMsg(message, type = 'info') {
+            const terminal = document.getElementById('terminal');
+            const entry = document.createElement('div');
+            
+            const timestamp = new Date().toLocaleTimeString();
+            let prefix = `<span class="text-gray-600">[${timestamp}]</span> `;
+            
+            if (type === 'error') {
+                entry.className = 'text-cyber-accent';
+                prefix += '<i class="fa-solid fa-circle-xmark mr-1"></i>';
+            } else if (type === 'success') {
+                entry.className = 'text-cyber-success';
+                prefix += '<i class="fa-solid fa-circle-check mr-1"></i>';
+            } else if (type === 'warning') {
+                entry.className = 'text-cyber-warning';
+                prefix += '<i class="fa-solid fa-triangle-exclamation mr-1"></i>';
+            } else {
+                entry.className = 'text-gray-300';
+            }
+
+            entry.innerHTML = prefix + message;
+            terminal.appendChild(entry);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('terminal').innerHTML = '<div class="text-gray-500">// Console logs cleared.</div>';
+        }
+
+        function updateProgress(percent, statusText) {
+            const bar = document.getElementById('progressBar');
+            const percentLabel = document.getElementById('progressPercent');
+            const statusLabel = document.getElementById('progressStatus');
+
+            const clamped = Math.min(100, Math.max(0, percent));
+            bar.style.width = clamped + '%';
+            percentLabel.innerText = clamped + '%';
+            if (statusText) statusLabel.innerText = statusText;
+        }
+
+        function setConnectedState(connected) {
+            isConnected = connected;
+            const statusBadge = document.getElementById('statusBadge');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+
+            if (connected) {
+                statusBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyber-success/30 bg-cyber-success/10 text-xs font-medium text-cyber-success";
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-cyber-success animate-pulse";
+                statusText.innerText = "Connected";
+
+                connectBtn.classList.add('hidden');
+                disconnectBtn.classList.remove('hidden');
+                disconnectBtn.disabled = false;
+            } else {
+                statusBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-700 bg-gray-900/50 text-xs font-medium text-gray-400";
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-gray-500";
+                statusText.innerText = "Disconnected";
+
+                connectBtn.classList.remove('hidden');
+                disconnectBtn.classList.add('hidden');
+            }
+        }
+
+        // Serial Terminal Logger interface for ESPLoader
+        const espLoaderLogger = {
+            log: (...args) => logMsg(args.join(' '), 'info'),
+            error: (...args) => logMsg(args.join(' '), 'error'),
+            debug: (...args) => {}
+        };
+
+        // Connect to Serial Port
+        async function connectPort() {
+            try {
+                if (!window.Transport) {
+                    throw new Error("esptool-js library not loaded yet.");
+                }
+
+                const port = await navigator.serial.requestPort();
+                transport = new window.Transport(port);
+                const baud = parseInt(document.getElementById('baudRate').value);
+
+                logMsg(`Connecting to port at ${baud} baud...`, 'info');
+
+                device = new window.ESPLoader({
+                    transport: transport,
+                    baudrate: baud,
+                    terminal: espLoaderLogger
+                });
+
+                await device.main();
+                setConnectedState(true);
+                logMsg(`Connected to ${device.chipName || 'ESP32 Device'} successfully!`, 'success');
+                return true;
+            } catch (err) {
+                logMsg(`Connection failed: ${err.message || err}`, 'error');
+                setConnectedState(false);
+                return false;
+            }
+        }
+
+        async function toggleConnect() {
+            if (isConnected) {
+                await disconnectPort();
+            } else {
+                await connectPort();
+            }
+        }
+
+        async function disconnectPort() {
+            try {
+                if (transport) {
+                    await transport.disconnect();
+                }
+                if (device) {
+                    await device.close();
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                device = null;
+                transport = null;
+                setConnectedState(false);
+                logMsg("Serial port disconnected.", 'warning');
+            }
+        }
+
+        // Erase Flash Function
+        async function eraseFlash() {
+            if (!isConnected) {
+                logMsg("Please connect serial port first!", "warning");
+                const connected = await connectPort();
+                if (!connected) return;
+            }
+
+            try {
+                updateProgress(0, "Erasing Flash...");
+                logMsg("Starting full chip erase...", "warning");
+                
+                const startTime = Date.now();
+                await device.eraseFlash();
+                const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+                updateProgress(100, "Erase Complete");
+                logMsg(`Flash erased successfully in ${duration}s!`, "success");
+            } catch (err) {
+                logMsg(`Erase Flash Error: ${err.message || err}`, "error");
+                updateProgress(0, "Erase Failed");
+            }
+        }
+
+        // Flash Firmware File
+        async function flashFirmware(deviceKey) {
+            const config = FIRMWARE_MAP[deviceKey];
+            if (!config) return;
+
+            if (!isConnected) {
+                logMsg("Please connect your device first!", "warning");
+                const connected = await connectPort();
+                if (!connected) return;
+            }
+
+            try {
+                logMsg(`Fetching binary file: ${config.file}...`, "info");
+                updateProgress(0, "Downloading binary...");
+
+                // Download the local .bin file
+                const response = await fetch(config.file);
+                if (!response.ok) {
+                    throw new Error(`Failed to load file ${config.file} (${response.statusText})`);
+                }
+
+                const blob = await response.blob();
+                const fileData = await readBlobAsBinaryString(blob);
+
+                logMsg(`Loaded ${config.file} (${(blob.size / (1024 * 1024)).toFixed(2)} MB)`, "success");
+                logMsg(`Flashing target: ${config.name}...`, "info");
+                updateProgress(0, "Flashing...");
+
+                // Determine flash offset based on device type (Default 0x0 for S3/CPlus2 or 0x10000 depending on build)
+                const flashOffset = 0x0000; 
+
+                const fileArray = [{
+                    data: fileData,
+                    address: flashOffset
+                }];
+
+                await device.writeFlash({
+                    fileArray: fileArray,
+                    flashSize: 'keep',
+                    eraseAll: false,
+                    compress: true,
+                    reportProgress: (fileIdx, written, total) => {
+                        const percent = Math.round((written / total) * 100);
+                        updateProgress(percent, `Flashing (${percent}%)`);
+                    }
+                });
+
+                updateProgress(100, "Flashing Complete");
+                logMsg(`Successfully flashed Bruce 1.16.1 fix to ${config.name}!`, "success");
+                logMsg("Resetting device...", "info");
+                
+                await device.hardReset();
+                logMsg("Device reset completed. Firmware is now running!", "success");
+
+            } catch (err) {
+                logMsg(`Flashing Error: ${err.message || err}`, "error");
+                updateProgress(0, "Flashing Failed");
+            }
+        }
+
+        // File Reader Helper
+        function readBlobAsBinaryString(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsBinaryString(blob);
+            });
+        }
+    </script>
+</body>
+</html>
