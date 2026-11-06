@@ -348,11 +348,14 @@
             }
         }
 
-        // Serial Terminal Logger interface for ESPLoader (исправлен интерфейс под esptool-js)
+        // Serial Terminal Logger interface for ESPLoader (добавлены оба метода write и writeline для совместимости с esptool-js)
         const espLoaderLogger = {
             clean: () => { clearLogs(); },
-            write: (data) => logMsg(data, 'info'),
-            writeln: (data) => logMsg(data, 'info')
+            write: (data) => { logMsg(data, 'info'); },
+            writeln: (data) => { logMsg(data, 'info'); },
+            writeline: (data) => { logMsg(data, 'info'); },
+            error: (data) => { logMsg(data, 'error'); },
+            debug: (data) => {}
         };
 
         // Connect to Serial Port
