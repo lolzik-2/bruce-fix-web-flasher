@@ -348,16 +348,6 @@
             }
         }
 
-        // Serial Terminal Logger interface for ESPLoader (добавлены оба метода write и writeline для совместимости с esptool-js)
-        const espLoaderLogger = {
-            clean: () => { clearLogs(); },
-            write: (data) => { logMsg(data, 'info'); },
-            writeln: (data) => { logMsg(data, 'info'); },
-            writeline: (data) => { logMsg(data, 'info'); },
-            error: (data) => { logMsg(data, 'error'); },
-            debug: (data) => {}
-        };
-
         // Connect to Serial Port
         async function connectPort() {
             try {
@@ -371,10 +361,17 @@
 
                 logMsg(`Connecting to port at ${baud} baud...`, 'info');
 
+                // Передаем безопасный терминал, чтобы библиотека не вызывала ошибки отсутствующих методов
                 device = new window.ESPLoader({
                     transport: transport,
                     baudrate: baud,
-                    terminal: espLoaderLogger
+                    terminal: {
+                        clean: () => { clearLogs(); },
+                        write: (data) => { logMsg(data, 'info'); },
+                        writeln: (data) => { logMsg(data, 'info'); },
+                        writeline: (data) => { logMsg(data, 'info'); },
+                        error: (data) => { logMsg(data, 'error'); }
+                    }
                 });
 
                 await device.main();
