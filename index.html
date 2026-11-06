@@ -361,17 +361,22 @@
 
                 logMsg(`Connecting to port at ${baud} baud...`, 'info');
 
-                // Передаем безопасный терминал, чтобы библиотека не вызывала ошибки отсутствующих методов
+                // ИСПОЛЬЗУЕМ PROXY-ЗАГЛУШКУ: перехватывает вообще абсолютно любые методы терминала, 
+                // которые esptool-js пытается вызвать, и они никогда не упадут с ошибкой "is not a function".
+                const bulletproofTerminal = new Proxy({}, {
+                    get: (target, prop) => {
+                        return (...args) => {
+                            if (args.length > 0 && typeof args[0] === 'string') {
+                                logMsg(args[0], prop.includes('err') ? 'error' : 'info');
+                            }
+                        };
+                    }
+                });
+
                 device = new window.ESPLoader({
                     transport: transport,
                     baudrate: baud,
-                    terminal: {
-                        clean: () => { clearLogs(); },
-                        write: (data) => { logMsg(data, 'info'); },
-                        writeln: (data) => { logMsg(data, 'info'); },
-                        writeline: (data) => { logMsg(data, 'info'); },
-                        error: (data) => { logMsg(data, 'error'); }
-                    }
+                    terminal: bulletproofTerminal
                 });
 
                 await device.main();
