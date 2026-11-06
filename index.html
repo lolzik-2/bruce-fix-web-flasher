@@ -1,4 +1,3 @@
-  html
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -349,11 +348,11 @@
             }
         }
 
-        // Serial Terminal Logger interface for ESPLoader
+        // Serial Terminal Logger interface for ESPLoader (исправлен интерфейс под esptool-js)
         const espLoaderLogger = {
-            log: (...args) => logMsg(args.join(' '), 'info'),
-            error: (...args) => logMsg(args.join(' '), 'error'),
-            debug: (...args) => {}
+            clean: () => { clearLogs(); },
+            write: (data) => logMsg(data, 'info'),
+            writeln: (data) => logMsg(data, 'info')
         };
 
         // Connect to Serial Port
@@ -464,7 +463,6 @@
                 logMsg(`Flashing target: ${config.name}...`, "info");
                 updateProgress(0, "Flashing...");
 
-                // Determine flash offset based on device type (Default 0x0 for S3/CPlus2 or 0x10000 depending on build)
                 const flashOffset = 0x0000; 
 
                 const fileArray = [{
